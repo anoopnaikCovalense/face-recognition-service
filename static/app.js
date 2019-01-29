@@ -37,7 +37,7 @@ function update(){
         $('.message').html('');
     }
 
-    $('#train-content, #recognize-content').hide();
+    $('#train-content, #recognize-content, #recognize-content-video').hide();
     $('#'+active_section).show();
 
 
@@ -145,14 +145,35 @@ $(document).ready(function(){
     });
     // listen for recognition form submit
     $('#recognize').submit(function(e){
-
-
-
         // call to backend
         var recog_form_data = new FormData();
         recog_form_data.append('file', recognize_data.file);
 
         axios.post('/api/recognize', recog_form_data).then(function(response){
+
+
+            console.log("We found a user matched with your face image is", response.data);
+
+            message = {type: 'success', message: 'We found a user matched with your face image is: '+ response.data.user.name};
+
+            recognize_data = {file: null};
+            update();
+
+        }).catch(function(err){
+
+
+            message = {type: 'error', message: _.get(err, 'response.data.error.message', 'Unknown error')};
+
+            update();
+
+        });
+        e.preventDefault();
+    });
+
+
+    // listen for recognition form submit
+    $('#recognize-video').submit(function(e){
+        axios.get('/api/recognizeFacesInVideo').then(function(response){
 
 
             console.log("We found a user matched with your face image is", response.data);

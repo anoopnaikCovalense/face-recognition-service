@@ -56,6 +56,6 @@ form .description{
 .tabs li.active{
     color: #00e640;
 }
-#recognize-content, #train-content{
+#recognize-content, #recognize-content-video, #train-content{
     display: none;
 }

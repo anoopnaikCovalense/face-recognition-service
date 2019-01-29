@@ -4,6 +4,9 @@ from os import path, getcwd
 import time
 from db import Database
 from face import Face
+import cv2
+import face_recognition
+import numpy
 
 app = Flask(__name__)
 
@@ -24,12 +27,11 @@ def error_handle(error_message, status=500, mimetype='application/json'):
 def get_user_by_id(user_id):
     user = {}
     results = app.db.select(
-        'SELECT users.id, users.name, users.created, faces.id, faces.user_id, faces.filename,faces.created FROM users LEFT JOIN faces ON faces.user_id = users.id WHERE users.id = ?',
+        'SELECT users.id, users.name, users.created, faces.id, faces.user_id, faces.filename,faces.created FROM users LEFT JOIN faces ON faces.user_id = users.id WHERE users.id = %s',
         [user_id])
 
     index = 0
     for row in results:
-        # print(row)
         face = {
             "id": row[3],
             "user_id": row[4],
@@ -53,9 +55,9 @@ def get_user_by_id(user_id):
 
 
 def delete_user_by_id(user_id):
-    app.db.delete('DELETE FROM users WHERE users.id = ?', [user_id])
+    app.db.delete('DELETE FROM users WHERE users.id = %s', [user_id])
     # also delete all faces with user id
-    app.db.delete('DELETE FROM faces WHERE faces.user_id = ?', [user_id])
+    app.db.delete('DELETE FROM faces WHERE faces.user_id = %s', [user_id])
 
 #   Route for Hompage
 @app.route('/', methods=['GET'])
@@ -97,37 +99,50 @@ def train():
             print("File is allowed and will be saved in ", app.config['storage'])
             filename = secure_filename(file.filename)
             trained_storage = path.join(app.config['storage'], 'trained')
-            file.save(path.join(trained_storage, filename))
+            saved_file_path = path.join(trained_storage, filename)
+            file.save(saved_file_path)
             # let start save file to our storage
 
-            # save to our sqlite database.db
-            created = int(time.time())
-            user_id = app.db.insert('INSERT INTO users(name, created) values(?,?)', [name, created])
+            # load the input image and convert it from RGB (OpenCV ordering)
+            # to dlib ordering (RGB)
+            image = cv2.imread(saved_file_path)
+            rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # detect the (x, y)-coordinates of the bounding boxes
+            # corresponding to each face in the input image
+            boxes = face_recognition.face_locations(rgb, model="cnn")
+            # compute the facial embedding for the face
+            encodings = face_recognition.face_encodings(rgb, boxes)
+            # loop over the encodings
+            for encoding in encodings:
+                # add each encoding + name to our set of known names and
+                # encodings in mysql database
+                created = int(time.time())
+                user_id = app.db.insert('INSERT INTO users(name, created) values(%s,%s)', [name, str(created)])
 
-            if user_id:
+                if user_id:
 
-                print("User saved in data", name, user_id)
-                # user has been save with user_id and now we need save faces table as well
+                    print("User saved in data", name, user_id)
+                    # user has been save with user_id and now we need save faces table as well
 
-                face_id = app.db.insert('INSERT INTO faces(user_id, filename, created) values(?,?,?)',
-                                        [user_id, filename, created])
+                    # encoding_pickle = pickle.dumps(encoding, protocol=0)
+                    # encoding_json = json.dumps(encoding)
 
-                if face_id:
+                    encoding_pickle = numpy.ndarray.dumps(encoding)
 
-                    print("cool face has been saved")
-                    face_data = {"id": face_id, "filename": filename, "created": created}
-                    return_output = json.dumps({"id": user_id, "name": name, "face": [face_data]})
-                    return success_handle(return_output)
+                    face_id = app.db.insert('INSERT INTO faces(user_id, filename, encoding, created) values(%s,%s,%s,%s)',
+                                            [user_id, filename, encoding_pickle, str(created)])
+
+                    if face_id:
+                        print("cool face has been saved")
+                        face_data = {"id": face_id, "filename": filename, "created": created}
+                        return_output = json.dumps({"id": user_id, "name": name, "face": [face_data]})
+                        return success_handle(return_output)
+                    else:
+                        print("An error saving face image.")
+                        return error_handle("n error saving face image.")
                 else:
-
-                    print("An error saving face image.")
-
-                    return error_handle("n error saving face image.")
-
-            else:
-                print("Something happend")
-                return error_handle("An error inserting new user")
-
+                    print("Something happend")
+                    return error_handle("An error inserting new user")
         print("Request is contain image")
     return success_handle(output)
 
@@ -153,7 +168,7 @@ def recognize():
         return error_handle("Image is required")
     else:
         file = request.files['file']
-        # file extension valiate
+        # file extension valid
         if file.mimetype not in app.config['file_allowed']:
             return error_handle("File extension is not allowed")
         else:
@@ -164,15 +179,25 @@ def recognize():
             file.save(file_path)
 
             user_id = app.face.recognize(filename)
-            if user_id:
+            if user_id is not None:
                 user = get_user_by_id(user_id)
                 message = {"message": "Hey we found {0} matched with your face image".format(user["name"]),
                            "user": user}
                 return success_handle(json.dumps(message))
             else:
-
                 return error_handle("Sorry we can not found any people matched with your face image, try another image")
 
+# router for recognize a unknown face
+@app.route('/api/recognizeFacesInVideo', methods=['GET'])
+def recognize_faces_in_video():
+    user_id = app.face.recognize_faces_in_video()
+    if user_id is not None:
+        user = get_user_by_id(user_id)
+        message = {"message": "Hey we found {0} matched with your face image".format(user["name"]),
+                   "user": user}
+        return success_handle(json.dumps(message))
+    else:
+        return error_handle("Sorry we can not found any people matched with your face image, try another image")
 
 # Run the app
 app.run()

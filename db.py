@@ -1,40 +1,39 @@
-import sqlite3
-from os import path, getcwd
-
-db = path.join(getcwd(), 'database.db')
-
+import mysql.connector
+from mysql.connector import errorcode
 
 class Database:
 
     def __init__(self):
-        self.connection = sqlite3.connect(db)
+        # init mysql connection
+        self.connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            passwd="12345678",
+            database="face_recognition"
+        )
 
     def query(self, q, arg=()):
-        cursor = self.connection.cursor()
-
+        cursor = self.connection.cursor(buffered=True)
         cursor.execute(q, arg)
         results = cursor.fetchall()
         cursor.close()
-
         return results
 
     def insert(self, q, arg=()):
-        cursor = self.connection.cursor()
-
+        cursor = self.connection.cursor(buffered=True)
         cursor.execute(q, arg)
-
         self.connection.commit()
         result = cursor.lastrowid
         cursor.close()
         return result
 
     def select(self, q, arg=()):
-        cursor = self.connection.cursor()
-
-        return cursor.execute(q, arg)
+        cursor = self.connection.cursor(buffered=True)
+        cursor.execute(q, arg)
+        return cursor.fetchall()
 
     def delete(self, q, arg=()):
-        cursor = self.connection.cursor()
+        cursor = self.connection.cursor(buffered=True)
         result = cursor.execute(q, arg)
         self.connection.commit()
         return result
