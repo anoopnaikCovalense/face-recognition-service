@@ -9,7 +9,7 @@ class Database:
             host="localhost",
             user="root",
             passwd="12345678",
-            database="face_recognition"
+            database="csmart_faces"
         )
 
     def query(self, q, arg=()):

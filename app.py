@@ -7,14 +7,13 @@ from face import Face
 import cv2
 import face_recognition
 import numpy
+from base64 import b64decode
 
 app = Flask(__name__)
-
 app.config['file_allowed'] = ['image/png', 'image/jpeg']
 app.config['storage'] = path.join(getcwd(), 'storage')
 app.db = Database()
 app.face = Face(app)
-
 
 def success_handle(output, status=200, mimetype='application/json'):
     return Response(output, status=status, mimetype=mimetype)
@@ -29,7 +28,6 @@ def get_user_by_id(user_id):
     results = app.db.select(
         'SELECT users.id, users.name, users.created, faces.id, faces.user_id, faces.filename,faces.created FROM users LEFT JOIN faces ON faces.user_id = users.id WHERE users.id = %s',
         [user_id])
-
     index = 0
     for row in results:
         face = {
@@ -75,33 +73,44 @@ def homepage():
 def train():
     output = json.dumps({"success": True})
 
-    if 'file' not in request.files:
-
-        print ("Face image is required")
-        return error_handle("Face image is required.")
+    if ('file' not in request.files) and (request.form['image'] == ""):
+            print("Face image is required")
+            return error_handle("Face image is required.")
     else:
-
         print("File request", request.files)
-        file = request.files['file']
+        image_data_uri = request.form['image']
+        if image_data_uri != "":
+            header, image_data_uri = image_data_uri.split(",", 1)
+            name = request.form['name']
+            binary_data = b64decode(image_data_uri)
+            trained_storage = path.join(app.config['storage'], 'trained')
+            saved_file_path = path.join(trained_storage, name)
+            created_file_ts = str(time.time())
+            filename = name + created_file_ts + '.jpg'
+            saved_file_path = saved_file_path + created_file_ts + '.jpg'
+            fd = open(saved_file_path, 'wb')
+            fd.write(binary_data)
+            fd.close()
 
-        if file.mimetype not in app.config['file_allowed']:
+        # if image is captured using webcam
+        if image_data_uri == "":
+            file = request.files['file']
 
+        # if image type is not valid and image was not captured using webcam
+        if image_data_uri == "" and file.mimetype not in app.config['file_allowed']:
             print("File extension is not allowed")
-
             return error_handle("We are only allow upload file with *.png , *.jpg")
         else:
-
             # get name in form data
             name = request.form['name']
-
-            print("Information of that face", name)
-
-            print("File is allowed and will be saved in ", app.config['storage'])
-            filename = secure_filename(file.filename)
-            trained_storage = path.join(app.config['storage'], 'trained')
-            saved_file_path = path.join(trained_storage, filename)
-            file.save(saved_file_path)
-            # let start save file to our storage
+            
+            if image_data_uri == "":
+                print("Information of that face", name)
+                print("File is allowed and will be saved in ", app.config['storage'])
+                filename = secure_filename(file.filename)
+                trained_storage = path.join(app.config['storage'], 'trained')
+                saved_file_path = path.join(trained_storage, filename)
+                file.save(saved_file_path)
 
             # load the input image and convert it from RGB (OpenCV ordering)
             # to dlib ordering (RGB)
@@ -120,7 +129,6 @@ def train():
                 user_id = app.db.insert('INSERT INTO users(name, created) values(%s,%s)', [name, str(created)])
 
                 if user_id:
-
                     print("User saved in data", name, user_id)
                     # user has been save with user_id and now we need save faces table as well
 
@@ -132,6 +140,13 @@ def train():
                     face_id = app.db.insert('INSERT INTO faces(user_id, filename, encoding, created) values(%s,%s,%s,%s)',
                                             [user_id, filename, encoding_pickle, str(created)])
 
+                    # append this entry in the known encodings in face.py to prevent restart of service every time
+                    # a new face is added to database because all the encodings of users is loaded in memory when service starts
+                    index_key = len(app.face.known_encoding_faces)
+                    app.face.known_encoding_faces.append(encoding)
+                    index_key_string = str(index_key)
+                    app.face.face_user_keys['{0}'.format(index_key_string)] = user_id
+
                     if face_id:
                         print("cool face has been saved")
                         face_data = {"id": face_id, "filename": filename, "created": created}
@@ -139,9 +154,9 @@ def train():
                         return success_handle(return_output)
                     else:
                         print("An error saving face image.")
-                        return error_handle("n error saving face image.")
+                        return error_handle("An error saving face image.")
                 else:
-                    print("Something happend")
+                    print("Something happened")
                     return error_handle("An error inserting new user")
         print("Request is contain image")
     return success_handle(output)

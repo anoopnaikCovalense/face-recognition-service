@@ -16,12 +16,9 @@ class Face:
         self.load_all()
 
     def load_user_by_index_key(self, index_key=0):
-
         key_str = str(index_key)
-
         if key_str in self.face_user_keys:
             return self.face_user_keys[key_str]
-
         return None
 
     def load_train_file_by_name(self, name):
@@ -127,7 +124,7 @@ class Face:
 
             # update the list of names
             user_ids.append(user_id)
-        if (len(user_ids) > 0):
+        if len(user_ids) > 0:
             return user_ids[0]
         return None
 
