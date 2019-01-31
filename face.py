@@ -102,6 +102,11 @@ class Face:
             # attempt to match each face in the input image to our known
             # encodings
             matches = face_recognition.compare_faces(self.known_encoding_faces, encoding)
+            distances = face_recognition.face_distance(self.known_encoding_faces, encoding)
+            min_dist = numpy.min(distances)
+            index_of_minimum_dist = numpy.where(distances == min_dist)
+            index_of_minimum_dist = index_of_minimum_dist[0][0]
+
             # check to see if we have found a match
             if True in matches:
                 # find the indexes of all matched faces then initialize a
@@ -113,19 +118,10 @@ class Face:
                 # loop over the matched indexes and maintain a count for
                 # each recognized face face
                 for i in matchedIdxs:
-                    # so we found this user with index key and find him
-                    user_id = self.load_user_by_index_key(i)
-                    counts[user_id] = counts.get(user_id, 0) + 1
-
-                # determine the recognized face with the largest number of
-                # votes (note: in the event of an unlikely tie Python will
-                # select first entry in the dictionary)
-                user_id = max(counts, key=counts.get)
-
-            # update the list of names
-            user_ids.append(user_id)
-        if len(user_ids) > 0:
-            return user_ids[0]
+                    if index_of_minimum_dist == i:
+                        # so we found this user with index key and find him
+                        user_id = self.load_user_by_index_key(i)
+                        return user_id
         return None
 
     def recognize_faces_in_video(self):
@@ -162,9 +158,13 @@ class Face:
                 # attempt to match each face in the input image to our known
                 # encodings
                 matches = face_recognition.compare_faces(self.known_encoding_faces, encoding)
-                user_id = "Unknown"
-                print("matches")
-                print(matches)
+                distances = face_recognition.face_distance(self.known_encoding_faces, encoding)
+                print("distances")
+                print(distances)
+                min_dist = numpy.min(distances)
+                index_of_minimum_dist = numpy.where(distances == min_dist)
+                index_of_minimum_dist = index_of_minimum_dist[0][0]
+
                 # check to see if we have found a match
                 if True in matches:
                     # find the indexes of all matched faces then initialize a
@@ -176,22 +176,12 @@ class Face:
                     # loop over the matched indexes and maintain a count for
                     # each recognized face face
                     for i in matchedIdxs:
-                        # so we found this user with index key and find him
-                        user_id = self.load_user_by_index_key(i)
-                        counts[user_id] = counts.get(user_id, 0) + 1
-
-                    # determine the recognized face with the largest number of
-                    # votes (note: in the event of an unlikely tie Python will
-                    # select first entry in the dictionary)
-                    user_id = max(counts, key=counts.get)
-
-                    # update the list of names
-                    user_ids.append(user_id)
-                    print("users detected")
-                    print(user_ids)
-                    # do a bit of cleanup
-                    vs.stop()
-                    return user_ids[0]
+                        if index_of_minimum_dist == i:
+                            # so we found this user with index key and find him
+                            user_id = self.load_user_by_index_key(i)
+                            vs.stop()
+                            return user_id
+            return None
 
             # loop over the recognized faces
             for ((top, right, bottom, left), user) in zip(boxes, user_ids):

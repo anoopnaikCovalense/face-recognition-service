@@ -79,7 +79,7 @@ def train():
     else:
         print("File request", request.files)
         image_data_uri = request.form['image']
-        if image_data_uri != "":
+        if image_data_uri != "undefined":
             header, image_data_uri = image_data_uri.split(",", 1)
             name = request.form['name']
             binary_data = b64decode(image_data_uri)
@@ -93,18 +93,18 @@ def train():
             fd.close()
 
         # if image is captured using webcam
-        if image_data_uri == "":
+        if image_data_uri == "undefined":
             file = request.files['file']
 
         # if image type is not valid and image was not captured using webcam
-        if image_data_uri == "" and file.mimetype not in app.config['file_allowed']:
+        if image_data_uri == "undefined" and file.mimetype not in app.config['file_allowed']:
             print("File extension is not allowed")
             return error_handle("We are only allow upload file with *.png , *.jpg")
         else:
             # get name in form data
             name = request.form['name']
             
-            if image_data_uri == "":
+            if image_data_uri == "undefined":
                 print("Information of that face", name)
                 print("File is allowed and will be saved in ", app.config['storage'])
                 filename = secure_filename(file.filename)
