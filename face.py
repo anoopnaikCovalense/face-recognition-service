@@ -14,6 +14,7 @@ class Face:
         self.known_encoding_faces = []  # faces data for recognition
         self.face_user_keys = {}
         self.load_all()
+        self.threshold = 0.5
 
     def load_user_by_index_key(self, index_key=0):
         key_str = str(index_key)
@@ -101,8 +102,12 @@ class Face:
         for encoding in encodings:
             # attempt to match each face in the input image to our known
             # encodings
-            matches = face_recognition.compare_faces(self.known_encoding_faces, encoding)
+            matches = face_recognition.compare_faces(self.known_encoding_faces, encoding, self.threshold)
+            # print("matches")
+            # print(matches)
             distances = face_recognition.face_distance(self.known_encoding_faces, encoding)
+            # print("distances")
+            # print(distances)
             min_dist = numpy.min(distances)
             index_of_minimum_dist = numpy.where(distances == min_dist)
             index_of_minimum_dist = index_of_minimum_dist[0][0]
@@ -118,6 +123,11 @@ class Face:
                 # loop over the matched indexes and maintain a count for
                 # each recognized face face
                 for i in matchedIdxs:
+                    # print("i")
+                    # print(i)
+                    # user_id = self.load_user_by_index_key(i)
+                    # print("user_id")
+                    # print(user_id)
                     if index_of_minimum_dist == i:
                         # so we found this user with index key and find him
                         user_id = self.load_user_by_index_key(i)
@@ -157,10 +167,12 @@ class Face:
             for encoding in encodings:
                 # attempt to match each face in the input image to our known
                 # encodings
-                matches = face_recognition.compare_faces(self.known_encoding_faces, encoding)
+                matches = face_recognition.compare_faces(self.known_encoding_faces, encoding, self.threshold)
+                # print("matches")
+                # print(matches)
                 distances = face_recognition.face_distance(self.known_encoding_faces, encoding)
-                print("distances")
-                print(distances)
+                # print("distances")
+                # print(distances)
                 min_dist = numpy.min(distances)
                 index_of_minimum_dist = numpy.where(distances == min_dist)
                 index_of_minimum_dist = index_of_minimum_dist[0][0]
@@ -176,57 +188,15 @@ class Face:
                     # loop over the matched indexes and maintain a count for
                     # each recognized face face
                     for i in matchedIdxs:
+                        # print("i")
+                        # print(i)
+                        # user_id = self.load_user_by_index_key(i)
+                        # print("user_id")
+                        # print(user_id)
                         if index_of_minimum_dist == i:
                             # so we found this user with index key and find him
                             user_id = self.load_user_by_index_key(i)
                             vs.stop()
                             return user_id
+            vs.stop()
             return None
-
-            # loop over the recognized faces
-            for ((top, right, bottom, left), user) in zip(boxes, user_ids):
-                # rescale the face coordinates
-                top = int(top * r)
-                right = int(right * r)
-                bottom = int(bottom * r)
-                left = int(left * r)
-
-                userResult = self.get_user_by_id(user_id)
-                name = userResult["name"]
-
-                # draw the predicted face name on the image
-                cv2.rectangle(frame, (left, top), (right, bottom),
-                              (0, 255, 0), 2)
-                y = top - 15 if top - 15 > 15 else top + 15
-                cv2.putText(frame, name, (left, y), cv2.FONT_HERSHEY_SIMPLEX,
-                            0.75, (0, 255, 0), 2)
-
-            # if the video writer is None *AND* we are supposed to write
-            # the output video to disk initialize the writer
-            if writer is None:
-                fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-                writer = cv2.VideoWriter("/home/an/Documents/facerecognition/face-recognition-service/", fourcc, 20,
-                                         (frame.shape[1], frame.shape[0]), True)
-
-            # if the writer is not None, write the frame with recognized
-            # faces to disk
-            if writer is not None:
-                writer.write(frame)
-
-            # check to see if we are supposed to display the output frame to
-            # the screen
-            cv2.imshow("Frame", frame)
-            key = cv2.waitKey(1) & 0xFF
-
-            # if the `q` key was pressed, break from the loop
-            if key == ord("q"):
-                break
-
-        # do a bit of cleanup
-        cv2.destroyAllWindows()
-        vs.stop()
-
-        # check to see if the video writer point needs to be released
-        if writer is not None:
-            writer.release()
-        return None

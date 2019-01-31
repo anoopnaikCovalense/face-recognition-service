@@ -187,7 +187,6 @@ def recognize():
         if file.mimetype not in app.config['file_allowed']:
             return error_handle("File extension is not allowed")
         else:
-
             filename = secure_filename(file.filename)
             unknown_storage = path.join(app.config["storage"], 'unknown')
             file_path = path.join(unknown_storage, filename)
