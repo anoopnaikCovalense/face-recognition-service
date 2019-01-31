@@ -222,4 +222,4 @@ def recognize_faces_in_video():
         return error_handle("Sorry we can not found any people matched with your face image, try another image")
 
 # Run the app
-app.run()
+app.run(host="0.0.0.0")
