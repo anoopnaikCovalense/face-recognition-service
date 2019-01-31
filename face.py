@@ -33,22 +33,20 @@ class Face:
     def get_user_by_id(self, user_id):
         user = {}
         results = self.db.select(
-            'SELECT users.id, users.name, users.created, faces.id, faces.user_id, faces.filename,faces.created FROM users LEFT JOIN faces ON faces.user_id = users.id WHERE users.id = %s',
+            'SELECT users.id, users.user_name as name, faces.id, faces.user_id, faces.filename,faces.created FROM vtiger_users as users LEFT JOIN covalense_faces as faces ON faces.user_id = users.id WHERE users.id = %s',
             [user_id])
-
         index = 0
         for row in results:
             face = {
-                "id": row[3],
-                "user_id": row[4],
-                "filename": row[5],
-                "created": row[6],
+                "id": row[2],
+                "user_id": row[3],
+                "filename": row[4],
+                "created": row[5],
             }
             if index == 0:
                 user = {
                     "id": row[0],
                     "name": row[1],
-                    "created": row[2],
                     "faces": [],
                 }
             if row[3]:
@@ -60,8 +58,7 @@ class Face:
         return None
 
     def load_all(self):
-
-        results = self.db.select('SELECT faces.id, faces.user_id, faces.filename, faces.encoding, faces.created FROM faces')
+        results = self.db.select('SELECT id, user_id, filename, encoding, created FROM covalense_faces')
         if results is not None:
             for row in results:
                 user_id = row[1]

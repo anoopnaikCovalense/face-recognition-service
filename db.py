@@ -9,7 +9,7 @@ class Database:
             host="localhost",
             user="root",
             passwd="12345678",
-            database="csmart_faces"
+            database="crm24012019"
         )
 
     def query(self, q, arg=()):
