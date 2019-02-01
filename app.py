@@ -212,7 +212,7 @@ def recognize():
 # router for recognize a unknown face
 @app.route('/api/recognizeFacesInVideo', methods=['GET'])
 def recognize_faces_in_video():
-    user_id = app.face.recognize_faces_in_video()
+    user_id = app.face.blink_detection()
     if user_id is not None:
         user = get_user_by_id(user_id)
         message = {"message": "Hey we found {0} matched with your face image".format(user["name"]),
