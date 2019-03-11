@@ -8,7 +8,7 @@ import cv2
 import face_recognition
 import numpy
 from base64 import b64decode
-import sys
+#import sys
 
 app = Flask(__name__)
 app.config['file_allowed'] = ['image/png', 'image/jpeg']
